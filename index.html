@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        #myForm {
+            text-align: center;
+            margin: 20px auto;
+            max-width: 400px;
+            width: 100%;
+            padding: 0 20px;
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 18px;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .todo {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        #todoTable {
+            width: 60%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #todoTable th, #todoTable td {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            text-align: left;
+        }
+
+        #todoTable th {
+            background-color: #007BFF;
+            color: #fff;
+        }
+
+        #todoTable tbody tr:hover {
+            background-color: #f2f2f2;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 5px;
+        }
+
+        .delete,
+        .edit {
+            cursor: pointer;
+            background-color: #ff6961;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+        }
+
+        .edit {
+            background-color: #ffc107;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 400px;
+            text-align: center;
+        }
+
+        .modal-input {
+            width: 350px;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+            margin-bottom: 10px;
+            margin-top: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .modal-input:hover {
+            border-color: #007BFF;
+        }
+
+        .modal-buttons {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+        }
+
+        .cancel-btn,
+        .save-btn {
+            cursor: pointer;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .cancel-btn {
+            background-color: #ff6961;
+            color: #fff;
+        }
+
+        .save-btn {
+            background-color: #28a745;
+            color: #fff;
+        }
+
+        /* Loading Animation Styles */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; 
+        }
+
+        .loading-circle {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #007BFF;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <form id="myForm">
+        <label for="todo">Enter something to do:</label>
+        <input type="text" name="todo" id="todo" class="todo">
+    </form>
+    <table id="todoTable">
+        <thead>
+            <tr>
+                <th>Todos</th>
+                <th style="width: 150px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="display"></tbody>
+    </table>
+
+    <!-- Edit Todo Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <input type="text" class="modal-input" id="modalInput">
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+                <button class="save-btn" onclick="saveChanges()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Animation -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-circle"></div>
+    </div>
+
+    <script>
+        let isEditing = false;
+        let currentEditElement = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('myForm');
+            const out = document.querySelector('.display');
+            const todoInput = document.getElementById('todo');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+
+            const setLoading = (isLoading) => {
+                loadingOverlay.style.display = isLoading ? 'flex' : 'none';
+            };
+
+            const addTodo = (todoValue) => {
+                setLoading(true);
+                setTimeout(() => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><span class="myTodos">${todoValue}</span></td>
+                        <td class="actions">
+                            <button class="delete">Delete</button>
+                            <button class="edit">Edit</button>
+                        </td>
+                    `;
+                    out.appendChild(row);
+                    addRowEventListeners(row);
+                    setLoading(false);
+                }, 500);
+            };
+
+            const addRowEventListeners = (row) => {
+                const deleteButton = row.querySelector('.delete');
+                deleteButton.addEventListener('click', () => deleteTodo(row));
+
+                const editButton = row.querySelector('.edit');
+                editButton.addEventListener('click', () => editTodo(row));
+            };
+
+            const deleteTodo = (row) => {
+                setLoading(true);
+                setTimeout(() => {
+                    out.removeChild(row);
+                    setLoading(false);
+                }, 500); 
+            };
+
+            const editTodo = (row) => {
+                setLoading(true);
+                setTimeout(() => {
+                    const modalInput = document.getElementById('modalInput');
+                    const todoText = row.querySelector('.myTodos').textContent;
+        
+                    modalInput.value = todoText;
+                    isEditing = true;
+                    currentEditElement = row;
+        
+                    openModal();
+                    setLoading(false);
+                }, 500); 
+            };
+
+            const submitHandler = (event) => {
+                event.preventDefault();
+                setLoading(true);
+                setTimeout(() => {
+                    const todoValue = todoInput.value.trim();
+        
+                    if (!todoValue) return setLoading(false);
+        
+                    if (!isEditing) {
+                        addTodo(todoValue);
+                    }
+        
+                    todoInput.value = '';
+                    setLoading(false);
+                }, 500); 
+            };
+
+            form.addEventListener('submit', submitHandler);
+        });
+
+        function openModal() {
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            setLoading(true);
+            setTimeout(() => {
+                document.getElementById('editModal').style.display = 'none';
+                setLoading(false);
+            }, 500);
+        }
+
+        function saveChanges() {
+            const modalInput = document.getElementById('modalInput');
+            const todoValue = modalInput.value.trim();
+
+            if (!todoValue) return;
+
+            if (isEditing) {
+                setLoading(true);
+                setTimeout(() => {
+                    currentEditElement.querySelector('.myTodos').textContent = todoValue;
+                    isEditing = false;
+                    currentEditElement = null;
+                    closeModal();
+                    setLoading(false);
+                }, 500); 
+            }
+        }
+
+        function setLoading(isLoading) {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.style.display = isLoading ? 'flex' : 'none';
+        }
+    </script>
+</body>
+</html>
