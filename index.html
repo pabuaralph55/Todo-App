@@ -166,6 +166,41 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .myTodos.completed {
+            text-decoration: line-through;
+        }
+
+        .completed .edit {
+            display: none;
+        }
+
+        .disabled {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        /* New Modal Styles */
+        #completedModal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .completed-modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 400px;
+            text-align: center;
+        }
+
     </style>
 </head>
 <body>
@@ -199,6 +234,14 @@
         <div class="loading-circle"></div>
     </div>
 
+   <!-- Completed Item Modal -->
+   <div class="modal" id="completedModal">
+        <div class="completed-modal-content">
+            <p>This todo is completed and cannot be edited.</p>
+            <button class="cancel-btn" onclick="document.getElementById('completedModal').style.display='none'">OK</button>
+        </div>
+    </div>
+
     <script>
         let isEditing = false;
         let currentEditElement = null;
@@ -216,7 +259,10 @@
             const addTodo = (todoValue) => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><span class="myTodos">${todoValue}</span></td>
+                    <td>
+                        <input type="checkbox" class="toggle-completion">
+                        <span class="myTodos">${todoValue}</span>
+                    </td>
                     <td class="actions">
                         <button class="delete">Delete</button>
                         <button class="edit">Edit</button>
@@ -232,6 +278,26 @@
 
                 const editButton = row.querySelector('.edit');
                 editButton.addEventListener('click', () => editTodo(row));
+
+                const toggleCompletionCheckbox = row.querySelector('.toggle-completion');
+                toggleCompletionCheckbox.addEventListener('change', () => toggleCompletion(row));
+            };
+
+            const toggleCompletion = (row) => {
+                const todoText = row.querySelector('.myTodos');
+                const checkbox = row.querySelector('.toggle-completion');
+                const editButton = row.querySelector('.edit');
+                const completedModal = document.getElementById('completedModal');
+                
+                if (checkbox.checked) {
+                    todoText.classList.add('completed');
+                    editButton.classList.add('disabled');
+                    completedModal.style.display = 'flex';
+                } else {
+                    todoText.classList.remove('completed');
+                    editButton.classList.remove('disabled');
+                    completedModal.style.display = 'none';
+                }
             };
 
             const deleteTodo = (row) => {
@@ -243,15 +309,21 @@
             };
 
             const editTodo = (row) => {
+                const editButton = row.querySelector('.edit');
+                
+                if (editButton.classList.contains('disabled')) {
+                    return; // Exit the function if edit button is disabled
+                }
+
                 setLoading(true);
                 setTimeout(() => {
                     const modalInput = document.getElementById('modalInput');
                     const todoText = row.querySelector('.myTodos').textContent;
-        
+
                     modalInput.value = todoText;
                     isEditing = true;
                     currentEditElement = row;
-        
+
                     openModal();
                     setLoading(false);
                 }, 1000); 
@@ -274,43 +346,44 @@
             };
 
             form.addEventListener('submit', submitHandler);
-        });
 
-        function openModal() {
-            document.getElementById('editModal').style.display = 'flex';
-        }
+            // Modal related functionality
+            const modal = document.getElementById('editModal');
+            
+            const openModal = () => {
+                modal.style.display = 'flex';
+            };
 
-        function closeModal() {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            setLoading(true);
-            setTimeout(() => {
-                document.getElementById('editModal').style.display = 'none';
-                setLoading(false);
-            }, 1000);
-        }
+            const closeModal = () => {
+                isEditing = false;
+                currentEditElement = null;
+                modal.style.display = 'none';
+            };
 
-        function saveChanges() {
-            const modalInput = document.getElementById('modalInput');
-            const todoValue = modalInput.value.trim();
+            const saveChanges = () => {
+                if (!isEditing || !currentEditElement) return;
 
-            if (!todoValue) return;
+                const modalInput = document.getElementById('modalInput');
+                const newValue = modalInput.value.trim();
 
-            if (isEditing) {
+                if (!newValue) return;
+
                 setLoading(true);
                 setTimeout(() => {
-                    currentEditElement.querySelector('.myTodos').textContent = todoValue;
-                    isEditing = false;
-                    currentEditElement = null;
-                    setLoading(false);  
-                    closeModal();  
-                }, 500); 
-            }
-        }
+                    const todoTextElement = currentEditElement.querySelector('.myTodos');
+                    todoTextElement.textContent = newValue;
 
-        function setLoading(isLoading) {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            loadingOverlay.style.display = isLoading ? 'flex' : 'none';
-        }
+                    setLoading(false);
+                    closeModal();
+                }, 1000);
+            };
+
+            window.onclick = (event) => {
+                if (event.target == modal) {
+                    closeModal();
+                }
+            };
+        });
     </script>
 </body>
 </html>
