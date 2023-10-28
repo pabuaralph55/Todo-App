@@ -214,20 +214,16 @@
             };
 
             const addTodo = (todoValue) => {
-                setLoading(true);
-                setTimeout(() => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><span class="myTodos">${todoValue}</span></td>
-                        <td class="actions">
-                            <button class="delete">Delete</button>
-                            <button class="edit">Edit</button>
-                        </td>
-                    `;
-                    out.appendChild(row);
-                    addRowEventListeners(row);
-                    setLoading(false);
-                }, 300);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="myTodos">${todoValue}</span></td>
+                    <td class="actions">
+                        <button class="delete">Delete</button>
+                        <button class="edit">Edit</button>
+                    </td>
+                `;
+                out.appendChild(row);
+                addRowEventListeners(row);
             };
 
             const addRowEventListeners = (row) => {
@@ -243,7 +239,7 @@
                 setTimeout(() => {
                     out.removeChild(row);
                     setLoading(false);
-                }, 300); 
+                }, 1000);
             };
 
             const editTodo = (row) => {
@@ -263,19 +259,18 @@
 
             const submitHandler = (event) => {
                 event.preventDefault();
+                const todoValue = todoInput.value.trim();
+
+                if (!todoValue) return;
+
                 setLoading(true);
                 setTimeout(() => {
-                    const todoValue = todoInput.value.trim();
-        
-                    if (!todoValue) return setLoading(false);
-        
                     if (!isEditing) {
                         addTodo(todoValue);
                     }
-        
                     todoInput.value = '';
                     setLoading(false);
-                }, 500); 
+                }, 1000); 
             };
 
             form.addEventListener('submit', submitHandler);
@@ -291,7 +286,7 @@
             setTimeout(() => {
                 document.getElementById('editModal').style.display = 'none';
                 setLoading(false);
-            }, 500);
+            }, 1000);
         }
 
         function saveChanges() {
@@ -306,8 +301,8 @@
                     currentEditElement.querySelector('.myTodos').textContent = todoValue;
                     isEditing = false;
                     currentEditElement = null;
-                    closeModal();
-                    setLoading(false);
+                    setLoading(false);  
+                    closeModal();  
                 }, 500); 
             }
         }
